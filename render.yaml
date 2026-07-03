@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: editable-portfolio
+    env: node
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    disk:
+      name: portfolio-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: /data
+      - key: DATABASE_PATH
+        value: /data/portfolio.sqlite
+      - key: UPLOAD_DIR
+        value: /data/uploads
+      - key: MAX_UPLOAD_MB
+        value: "8"
+      - key: ADMIN_USER
+        sync: false
+      - key: ADMIN_PASSWORD_HASH
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true

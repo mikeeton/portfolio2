@@ -38,6 +38,14 @@ PORT=4174
 
 Restart `npm run dev` after changing `.env`.
 
+For production, prefer a password hash:
+
+```bash
+npm run hash:password -- your-strong-password
+```
+
+Set the output as `ADMIN_PASSWORD_HASH` and do not set `ADMIN_PASSWORD` on the host.
+
 ## Uploaded Content
 
 The app stores editable portfolio data in `server/portfolio.sqlite` and uploaded files in `server/uploads`.
@@ -65,3 +73,21 @@ npm start
 ```
 
 In production, the Express server serves the built React app and the API from the same port.
+
+## Deploy
+
+The repo includes:
+
+- `Dockerfile` for container hosts
+- `render.yaml` for Render Blueprint deployment
+- `/api/health` health check
+
+For hosts with temporary filesystems, set persistent paths:
+
+```bash
+DATA_DIR=/data
+DATABASE_PATH=/data/portfolio.sqlite
+UPLOAD_DIR=/data/uploads
+```
+
+On Render, the included `render.yaml` mounts a persistent disk at `/data`.
