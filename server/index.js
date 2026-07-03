@@ -37,19 +37,19 @@ const defaultData = {
     resumeUrl: "",
     photoUrl: "",
     about:
-      "Write a short introduction about who you are, what you build, and the kind of work you want people to remember you for."
+      "I turn coffee into commits and suspiciously calm interfaces. Currently building things that load fast, look sharp, and do not embarrass me in production."
   },
   skills: ["React", "JavaScript", "Node.js", "Express", "SQLite", "CSS"],
   experiences: [
     {
       id: crypto.randomUUID(),
       title: "Frontend Developer",
-      company: "Your Company",
+      company: "The Keyboard Gym",
       start: "2024",
       end: "Present",
       description:
-        "Describe your responsibilities, achievements, stack, and measurable impact.",
-      highlights: ["Built responsive interfaces", "Improved page performance"]
+        "Built interfaces, argued politely with CSS, and made pages behave on screens of all sizes.",
+      highlights: ["Taught buttons where to live", "Made slow pages reconsider their life choices"]
     }
   ],
   projects: [
@@ -57,7 +57,7 @@ const defaultData = {
       id: crypto.randomUUID(),
       name: "Featured Project",
       description:
-        "A short description of a project you are proud of, including the problem it solves.",
+        "A project that escaped localhost and lived to tell the tale.",
       stack: ["React", "Node.js"],
       link: "https://example.com",
       imageUrl: "",
@@ -269,7 +269,7 @@ function saveProfile(profile, skills) {
         email = excluded.email,
         github = excluded.github,
         linkedin = excluded.linkedin,
-        resume_url = excluded.resume_url,
+        resume_url = COALESCE(excluded.resume_url, profile.resume_url),
         photo_url = COALESCE(excluded.photo_url, profile.photo_url),
         about = excluded.about
     `).run({
@@ -280,7 +280,7 @@ function saveProfile(profile, skills) {
       email: cleanText(profile.email),
       github: cleanText(profile.github),
       linkedin: cleanText(profile.linkedin),
-      resumeUrl: cleanText(profile.resumeUrl || profile.resume_url),
+      resumeUrl: cleanText(profile.resumeUrl || profile.resume_url) || null,
       photoUrl: profile.photoUrl ?? profile.photo_url ?? null,
       about: cleanText(profile.about) || defaultData.profile.about
     });
@@ -296,6 +296,10 @@ function saveProfile(profile, skills) {
 
 function updatePhoto(url) {
   db.prepare("UPDATE profile SET photo_url = ? WHERE id = 1").run(url);
+}
+
+function updateResume(url) {
+  db.prepare("UPDATE profile SET resume_url = ? WHERE id = 1").run(url);
 }
 
 function upsertExperience(item, sortOrder = 0) {
@@ -508,6 +512,16 @@ app.post("/api/profile/photo", requireAuth, upload.single("photo"), (req, res, n
   try {
     if (!req.file) return res.status(400).json({ message: "No image uploaded." });
     updatePhoto(`/uploads/${req.file.filename}`);
+    res.json(getPortfolio());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/profile/resume", requireAuth, upload.single("resume"), (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: "No resume uploaded." });
+    updateResume(`/uploads/${req.file.filename}`);
     res.json(getPortfolio());
   } catch (error) {
     next(error);

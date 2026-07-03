@@ -136,6 +136,8 @@ function TopBar({ view, setView, isAdmin, onLogout }) {
 
 function Portfolio({ data }) {
   const { profile, experiences, projects, certificates, skills } = data;
+  const marqueeItems = [...skills.slice(0, 12), profile.role, "Portfolio", "Projects"];
+  const cleanAbout = cleanBio(profile.about);
   const [previewProject, setPreviewProject] = useState(null);
   const [contact, setContact] = useState({ name: "", email: "", message: "" });
   const [contactStatus, setContactStatus] = useState("");
@@ -145,10 +147,10 @@ function Portfolio({ data }) {
     <>
       <div className="marquee-strip" aria-hidden="true">
         <div className="marquee-track">
-          {[...skills, profile.role, "Portfolio", "Certificates", "Experience"].map((item, index) => (
+          {marqueeItems.map((item, index) => (
             <span key={`${item}-${index}`}>{item}</span>
           ))}
-          {[...skills, profile.role, "Portfolio", "Certificates", "Experience"].map((item, index) => (
+          {marqueeItems.map((item, index) => (
             <span key={`${item}-clone-${index}`}>{item}</span>
           ))}
         </div>
@@ -188,8 +190,8 @@ function Portfolio({ data }) {
       <section className="content">
         <section id="about" className="section" data-reveal>
           <p className="eyebrow">About</p>
-          <h2 className="section-title">A portfolio that moves like a product lab.</h2>
-          <p className="about-text">{profile.about}</p>
+          <h2 className="section-title">Code, caffeine, and questionable amounts of debugging.</h2>
+          <p className="about-text">{cleanAbout}</p>
           <div className="skill-list">
             {skills.map((skill) => <span key={skill}>{skill}</span>)}
           </div>
@@ -197,7 +199,7 @@ function Portfolio({ data }) {
 
         <section id="experience" className="section" data-reveal>
           <p className="eyebrow">Experience</p>
-          <h2 className="section-title">Where I have built, shipped, and improved things.</h2>
+          <h2 className="section-title">Things I have built without rage-quitting.</h2>
           <div className="timeline">
             {experiences.map((item) => (
               <article className="timeline-item" key={item.id} data-reveal>
@@ -216,7 +218,7 @@ function Portfolio({ data }) {
 
         <section id="work" className="section" data-reveal>
           <p className="eyebrow">Selected Work</p>
-          <h2 className="section-title">Projects with intention, polish, and clear outcomes.</h2>
+          <h2 className="section-title">Projects that made it out of localhost alive.</h2>
           <div className="project-grid">
             {projects.map((project) => (
               <article className="project-card" key={project.id} data-reveal>
@@ -251,7 +253,7 @@ function Portfolio({ data }) {
 
         <section id="certificates" className="section" data-reveal>
           <p className="eyebrow">Certificates</p>
-          <h2 className="section-title">Proof of learning, practice, and momentum.</h2>
+          <h2 className="section-title">Receipts that I did, in fact, study.</h2>
           <div className="cert-list">
             {certificates.length === 0 && <p className="muted">Certificates you upload will appear here.</p>}
             {certificates.map((certificate) => (
@@ -269,7 +271,7 @@ function Portfolio({ data }) {
 
         <section id="contact" className="section" data-reveal>
           <p className="eyebrow">Contact</p>
-          <h2 className="section-title">Have an opportunity or project? Send a message.</h2>
+          <h2 className="section-title">Got an idea? I promise to reply like a professional human.</h2>
           <form
             className="contact-form"
             onSubmit={async (event) => {
@@ -348,6 +350,7 @@ function Admin({ data, setData, isAdmin, setIsAdmin }) {
   const [project, setProject] = useState(emptyProject);
   const [certificate, setCertificate] = useState({ id: "", name: "", issuer: "", date: "", file: null });
   const [photo, setPhoto] = useState(null);
+  const [resume, setResume] = useState(null);
   const [error, setError] = useState("");
   const [messages, setMessages] = useState([]);
 
@@ -414,7 +417,6 @@ function Admin({ data, setData, isAdmin, setIsAdmin }) {
             <input placeholder="Email" value={profile.email} onChange={(e) => setProfile({ ...profile, email: e.target.value })} />
             <input placeholder="GitHub URL" value={profile.github} onChange={(e) => setProfile({ ...profile, github: e.target.value })} />
             <input placeholder="LinkedIn URL" value={profile.linkedin} onChange={(e) => setProfile({ ...profile, linkedin: e.target.value })} />
-            <input placeholder="Resume URL" value={profile.resumeUrl || ""} onChange={(e) => setProfile({ ...profile, resumeUrl: e.target.value })} />
           </div>
           <input placeholder="Tagline" value={profile.tagline} onChange={(e) => setProfile({ ...profile, tagline: e.target.value })} />
           <textarea rows="5" placeholder="About" value={profile.about} onChange={(e) => setProfile({ ...profile, about: e.target.value })} />
@@ -443,6 +445,28 @@ function Admin({ data, setData, isAdmin, setIsAdmin }) {
             <input type="file" accept="image/*" onChange={(e) => setPhoto(e.target.files[0])} />
           </label>
           <button className="primary upload-action"><Upload size={16} /> Upload photo</button>
+        </form>
+
+        <form
+          className="panel"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            if (!resume) return;
+            const body = new FormData();
+            body.append("resume", resume);
+            const next = await api("/api/profile/resume", { method: "POST", body });
+            setData(next, "Resume uploaded");
+            setResume(null);
+          }}
+        >
+          <h2>Resume</h2>
+          <label className="upload-box compact-upload">
+            <FileText />
+            <strong>{resume ? resume.name : "Upload resume"}</strong>
+            <small>PDF or image. Your public Resume button will use this file.</small>
+            <input type="file" accept="application/pdf,image/*" onChange={(e) => setResume(e.target.files[0])} />
+          </label>
+          <button className="primary upload-action"><Upload size={16} /> Upload resume</button>
         </form>
 
         <EditorPanel
@@ -657,6 +681,16 @@ function initials(name) {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+}
+
+function cleanBio(value) {
+  const cleaned = String(value || "")
+    .replace(/Write a short introduction about who you are, what you build, and the kind of work you want people to remember you for\.?/gi, "")
+    .replace(/Write a short introduction ab/gi, "")
+    .replace(/out who you are, what you build, and the kind of work you want people to remember you for\.?/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned || "Bio currently loading charisma. Please stand by while I pretend this was intentional.";
 }
 
 createRoot(document.getElementById("root")).render(<App />);
