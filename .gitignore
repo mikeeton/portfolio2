@@ -1,0 +1,8 @@
+node_modules
+dist
+.env
+server/data.json
+server/*.sqlite
+server/*.sqlite-*
+server/uploads/*
+!server/uploads/.gitkeep
