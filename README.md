@@ -1,8 +1,25 @@
-# Editable React Portfolio
+# Editable Portfolio
 
-A React portfolio inspired by clean developer portfolios, with a protected admin dashboard for updating your profile, photo, resume link, experience, projects, and certificates. Content is stored in SQLite.
+React portfolio with a private admin dashboard for editing profile content, skills, experience, projects, certificates, uploaded resume, screenshots, and contact messages.
 
-## Run Locally
+## Features
+
+- Public portfolio page
+- Admin login
+- Editable profile and skills
+- Resume upload
+- Profile photo upload
+- Experience, projects, and certificates
+- Edit, delete, and reorder admin items
+- Project completion status
+- Project screenshots
+- Project preview and visit buttons
+- Contact form with admin inbox
+- SQLite database
+- Persistent uploads
+- Render Blueprint and Docker deployment support
+
+## Local Development
 
 ```bash
 npm install
@@ -11,58 +28,57 @@ npm run dev
 
 Open:
 
-- Portfolio: http://localhost:5173
-- Admin: http://localhost:5173/admin
+- Portfolio: `http://localhost:5173`
+- Admin: `http://localhost:5173/admin`
 
 Default local admin login:
 
 - Username: `admin`
 - Password: `admin123`
 
-## Change The Admin Login
+## Environment Variables
 
-Create a `.env` file from the example:
-
-```bash
-cp .env.example .env
-```
-
-Then set strong values:
+No `.env` file is committed to the repo. Create one locally only if you need custom values.
 
 ```bash
-ADMIN_USER=your-username
-ADMIN_PASSWORD=your-strong-password
-SESSION_SECRET=a-long-random-secret
+ADMIN_USER=admin
+ADMIN_PASSWORD=change-this-password
+SESSION_SECRET=replace-with-a-long-random-secret
 PORT=4174
+DATABASE_PATH=server/portfolio.sqlite
+UPLOAD_DIR=server/uploads
+DATA_DIR=server
+MAX_UPLOAD_MB=8
+CORS_ORIGIN=http://localhost:5173
 ```
 
-Restart `npm run dev` after changing `.env`.
-
-For production, prefer a password hash:
+For production, use a password hash instead of `ADMIN_PASSWORD`:
 
 ```bash
 npm run hash:password -- your-strong-password
 ```
 
-Set the output as `ADMIN_PASSWORD_HASH` and do not set `ADMIN_PASSWORD` on the host.
-
-## Uploaded Content
-
-The app stores editable portfolio data in `server/portfolio.sqlite` and uploaded files in `server/uploads`.
-
-Admin-only actions are protected by a server-side session cookie. Visitors can view the portfolio, but they cannot use the editing APIs unless they are logged in as the admin.
-
-For deployment, persist both of these paths:
-
-- `server/portfolio.sqlite`
-- `server/uploads`
-
-You can change those locations with `DATABASE_PATH` and `UPLOAD_DIR`.
-
-Health check:
+Set the output as:
 
 ```bash
-curl http://localhost:4174/api/health
+ADMIN_PASSWORD_HASH=the-generated-bcrypt-hash
+```
+
+Then log in with the original password, not the hash.
+
+## Storage
+
+Local default storage:
+
+- Database: `server/portfolio.sqlite`
+- Uploads: `server/uploads`
+
+Production persistent storage should use:
+
+```bash
+DATA_DIR=/data
+DATABASE_PATH=/data/portfolio.sqlite
+UPLOAD_DIR=/data/uploads
 ```
 
 ## Production
@@ -72,22 +88,36 @@ npm run build
 npm start
 ```
 
-In production, the Express server serves the built React app and the API from the same port.
+The Express server serves both the API and the built React app.
 
-## Deploy
-
-The repo includes:
-
-- `Dockerfile` for container hosts
-- `render.yaml` for Render Blueprint deployment
-- `/api/health` health check
-
-For hosts with temporary filesystems, set persistent paths:
+Health check:
 
 ```bash
-DATA_DIR=/data
-DATABASE_PATH=/data/portfolio.sqlite
-UPLOAD_DIR=/data/uploads
+curl http://localhost:4174/api/health
 ```
 
-On Render, the included `render.yaml` mounts a persistent disk at `/data`.
+## Deploy On Render
+
+This repo includes `render.yaml`.
+
+1. Create a new Render Blueprint from this repository.
+2. Use branch `main`.
+3. Set `ADMIN_USER`.
+4. Generate and set `ADMIN_PASSWORD_HASH`.
+5. Deploy.
+
+The Blueprint mounts a persistent disk at `/data`, so the SQLite database and uploaded files survive redeploys.
+
+## Docker
+
+```bash
+docker build -t editable-portfolio .
+docker run -p 4174:4174 \
+  -e SESSION_SECRET=replace-me \
+  -e ADMIN_USER=admin \
+  -e ADMIN_PASSWORD_HASH='your-bcrypt-hash' \
+  -e DATABASE_PATH=/data/portfolio.sqlite \
+  -e UPLOAD_DIR=/data/uploads \
+  -v portfolio-data:/data \
+  editable-portfolio
+```

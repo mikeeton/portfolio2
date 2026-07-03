@@ -37,19 +37,19 @@ const defaultData = {
     resumeUrl: "",
     photoUrl: "",
     about:
-      "I turn coffee into commits and suspiciously calm interfaces. Currently building things that load fast, look sharp, and do not embarrass me in production."
+      "I build fast, accessible web applications with clean interfaces, practical architecture, and just enough personality to keep things human."
   },
   skills: ["React", "JavaScript", "Node.js", "Express", "SQLite", "CSS"],
   experiences: [
     {
       id: crypto.randomUUID(),
       title: "Frontend Developer",
-      company: "The Keyboard Gym",
+      company: "Your Company",
       start: "2024",
       end: "Present",
       description:
-        "Built interfaces, argued politely with CSS, and made pages behave on screens of all sizes.",
-      highlights: ["Taught buttons where to live", "Made slow pages reconsider their life choices"]
+        "Built responsive interfaces, improved user flows, and helped turn product ideas into usable software.",
+      highlights: ["Built responsive interfaces", "Improved page performance"]
     }
   ],
   projects: [
@@ -57,7 +57,7 @@ const defaultData = {
       id: crypto.randomUUID(),
       name: "Featured Project",
       description:
-        "A project that escaped localhost and lived to tell the tale.",
+        "A practical project with a clear goal, a working interface, and fewer surprises than the average group assignment.",
       stack: ["React", "Node.js"],
       link: "https://example.com",
       imageUrl: "",

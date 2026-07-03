@@ -190,7 +190,7 @@ function Portfolio({ data }) {
       <section className="content">
         <section id="about" className="section" data-reveal>
           <p className="eyebrow">About</p>
-          <h2 className="section-title">Code, caffeine, and questionable amounts of debugging.</h2>
+          <h2 className="section-title">Clean interfaces, practical systems, and the occasional clever shortcut.</h2>
           <p className="about-text">{cleanAbout}</p>
           <div className="skill-list">
             {skills.map((skill) => <span key={skill}>{skill}</span>)}
@@ -199,7 +199,7 @@ function Portfolio({ data }) {
 
         <section id="experience" className="section" data-reveal>
           <p className="eyebrow">Experience</p>
-          <h2 className="section-title">Things I have built without rage-quitting.</h2>
+          <h2 className="section-title">Work I have built, improved, and learned from.</h2>
           <div className="timeline">
             {experiences.map((item) => (
               <article className="timeline-item" key={item.id} data-reveal>
@@ -218,7 +218,7 @@ function Portfolio({ data }) {
 
         <section id="work" className="section" data-reveal>
           <p className="eyebrow">Selected Work</p>
-          <h2 className="section-title">Projects that made it out of localhost alive.</h2>
+          <h2 className="section-title">Selected projects with working links and real decisions behind them.</h2>
           <div className="project-grid">
             {projects.map((project) => (
               <article className="project-card" key={project.id} data-reveal>
@@ -253,7 +253,7 @@ function Portfolio({ data }) {
 
         <section id="certificates" className="section" data-reveal>
           <p className="eyebrow">Certificates</p>
-          <h2 className="section-title">Receipts that I did, in fact, study.</h2>
+          <h2 className="section-title">Certificates, learning milestones, and proof I read the docs.</h2>
           <div className="cert-list">
             {certificates.length === 0 && <p className="muted">Certificates you upload will appear here.</p>}
             {certificates.map((certificate) => (
@@ -271,7 +271,7 @@ function Portfolio({ data }) {
 
         <section id="contact" className="section" data-reveal>
           <p className="eyebrow">Contact</p>
-          <h2 className="section-title">Got an idea? I promise to reply like a professional human.</h2>
+          <h2 className="section-title">Have a role, project, or useful bit of chaos? Let’s talk.</h2>
           <form
             className="contact-form"
             onSubmit={async (event) => {
@@ -690,7 +690,7 @@ function cleanBio(value) {
     .replace(/out who you are, what you build, and the kind of work you want people to remember you for\.?/gi, "")
     .replace(/\s+/g, " ")
     .trim();
-  return cleaned || "Bio currently loading charisma. Please stand by while I pretend this was intentional.";
+  return cleaned || "Profile summary coming soon. The code is ready; the bio is warming up.";
 }
 
 createRoot(document.getElementById("root")).render(<App />);
