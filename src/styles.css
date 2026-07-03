@@ -573,6 +573,16 @@ p {
   transition: transform 0.28s ease, border-color 0.28s ease, box-shadow 0.28s ease;
 }
 
+.project-shot {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  margin-bottom: 16px;
+  filter: saturate(0.75);
+}
+
 .project-card::before {
   content: "";
   position: absolute;
@@ -960,6 +970,13 @@ textarea {
   overflow-wrap: anywhere;
 }
 
+.manage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 .manage-row button {
   width: 36px;
   aspect-ratio: 1;
@@ -970,6 +987,71 @@ textarea {
   background: rgba(248, 113, 113, 0.1);
   border: 1px solid rgba(248, 113, 113, 0.2);
   border-radius: 8px;
+}
+
+.icon-upload {
+  width: 36px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: #fed7aa;
+  background: rgba(251, 146, 60, 0.1);
+  border: 1px solid rgba(251, 146, 60, 0.22);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.icon-upload input {
+  display: none;
+}
+
+.contact-form {
+  max-width: 720px;
+  display: grid;
+  gap: 12px;
+}
+
+.message-list {
+  display: grid;
+  gap: 12px;
+}
+
+.message-row {
+  display: grid;
+  grid-template-columns: 1fr 36px;
+  gap: 14px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+
+.message-row a,
+.message-row small {
+  display: block;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.message-row p {
+  margin: 10px 0 0;
+  color: var(--ink);
+}
+
+.message-row button {
+  width: 36px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  color: #fecaca;
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  border-radius: 8px;
+}
+
+.manage-actions button:hover,
+.icon-upload:hover,
+.message-row button:hover {
+  border-color: rgba(255, 106, 82, 0.5);
 }
 
 .toast,

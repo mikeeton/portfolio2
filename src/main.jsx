@@ -7,14 +7,18 @@ import {
   FileText,
   Github,
   Globe2,
+  Image as ImageIcon,
   Linkedin,
   Lock,
   LogOut,
   Mail,
   MapPin,
+  Pencil,
   Plus,
   Save,
   Trash2,
+  ArrowDown,
+  ArrowUp,
   Upload
 } from "lucide-react";
 import "./styles.css";
@@ -29,6 +33,7 @@ const emptyExperience = {
 };
 
 const emptyProject = {
+  id: "",
   name: "",
   description: "",
   stack: "",
@@ -114,6 +119,7 @@ function TopBar({ view, setView, isAdmin, onLogout }) {
         <a href="#about" onClick={() => setView("portfolio")}>About</a>
         <a href="#experience" onClick={() => setView("portfolio")}>Experience</a>
         <a href="#work" onClick={() => setView("portfolio")}>Work</a>
+        <a href="#contact" onClick={() => setView("portfolio")}>Contact</a>
         <button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}>
           <Lock size={16} />
           Admin
@@ -131,6 +137,8 @@ function TopBar({ view, setView, isAdmin, onLogout }) {
 function Portfolio({ data }) {
   const { profile, experiences, projects, certificates, skills } = data;
   const [previewProject, setPreviewProject] = useState(null);
+  const [contact, setContact] = useState({ name: "", email: "", message: "" });
+  const [contactStatus, setContactStatus] = useState("");
   useReveal();
 
   return (
@@ -212,6 +220,7 @@ function Portfolio({ data }) {
           <div className="project-grid">
             {projects.map((project) => (
               <article className="project-card" key={project.id} data-reveal>
+                {project.imageUrl && <img className="project-shot" src={project.imageUrl} alt={`${project.name} screenshot`} />}
                 <div className="card-top">
                   <BriefcaseBusiness />
                   <span className={project.completed ? "status-pill complete" : "status-pill progress"}>
@@ -256,6 +265,27 @@ function Portfolio({ data }) {
               </a>
             ))}
           </div>
+        </section>
+
+        <section id="contact" className="section" data-reveal>
+          <p className="eyebrow">Contact</p>
+          <h2 className="section-title">Have an opportunity or project? Send a message.</h2>
+          <form
+            className="contact-form"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              setContactStatus("");
+              await api("/api/contact", { method: "POST", body: JSON.stringify(contact) });
+              setContact({ name: "", email: "", message: "" });
+              setContactStatus("Message sent.");
+            }}
+          >
+            <input placeholder="Your name" value={contact.name} onChange={(e) => setContact({ ...contact, name: e.target.value })} />
+            <input placeholder="Your email" type="email" value={contact.email} onChange={(e) => setContact({ ...contact, email: e.target.value })} />
+            <textarea rows="4" placeholder="Tell me what you want to build" value={contact.message} onChange={(e) => setContact({ ...contact, message: e.target.value })} />
+            {contactStatus && <p className="field-hint">{contactStatus}</p>}
+            <button className="primary"><Mail size={16} /> Send message</button>
+          </form>
         </section>
       </section>
       </main>
@@ -316,13 +346,21 @@ function Admin({ data, setData, isAdmin, setIsAdmin }) {
   const [profile, setProfile] = useState({ ...data.profile, skills: data.skills.join(", ") });
   const [experience, setExperience] = useState(emptyExperience);
   const [project, setProject] = useState(emptyProject);
-  const [certificate, setCertificate] = useState({ name: "", issuer: "", date: "", file: null });
+  const [certificate, setCertificate] = useState({ id: "", name: "", issuer: "", date: "", file: null });
   const [photo, setPhoto] = useState(null);
   const [error, setError] = useState("");
+  const [messages, setMessages] = useState([]);
 
   useEffect(() => {
     setProfile({ ...data.profile, skills: data.skills.join(", ") });
   }, [data]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    api("/api/contact")
+      .then((payload) => setMessages(payload.messages || []))
+      .catch(() => setMessages([]));
+  }, [isAdmin]);
 
   if (!isAdmin) {
     return (
@@ -435,13 +473,14 @@ function Admin({ data, setData, isAdmin, setIsAdmin }) {
           onSubmit={async (event) => {
             event.preventDefault();
             const body = new FormData();
+            if (certificate.id) body.append("id", certificate.id);
             body.append("name", certificate.name);
             body.append("issuer", certificate.issuer);
             body.append("date", certificate.date);
             if (certificate.file) body.append("file", certificate.file);
             const next = await api("/api/certificates", { method: "POST", body });
             setData(next, "Certificate added");
-            setCertificate({ name: "", issuer: "", date: "", file: null });
+            setCertificate({ id: "", name: "", issuer: "", date: "", file: null });
           }}
         >
           <h2>Certificate</h2>
@@ -457,7 +496,14 @@ function Admin({ data, setData, isAdmin, setIsAdmin }) {
           <button className="primary"><Plus size={16} /> Add certificate</button>
         </form>
 
-        <ContentList data={data} setData={setData} />
+        <ContentList
+          data={data}
+          setData={setData}
+          editExperience={(item) => setExperience({ ...item, highlights: item.highlights.join(", ") })}
+          editProject={(item) => setProject({ ...item, stack: item.stack.join(", ") })}
+          editCertificate={(item) => setCertificate({ id: item.id, name: item.name, issuer: item.issuer, date: item.date || "", file: null })}
+        />
+        <ContactMessages messages={messages} setMessages={setMessages} />
       </section>
     </main>
   );
@@ -496,23 +542,63 @@ function EditorPanel({ title, item, setItem, fields, textareaFields, onSubmit })
   );
 }
 
-function ContentList({ data, setData }) {
+function ContentList({ data, setData, editExperience, editProject, editCertificate }) {
   const groups = useMemo(() => [
-    ["Experiences", data.experiences, "/api/experiences"],
-    ["Projects", data.projects, "/api/projects"],
-    ["Certificates", data.certificates, "/api/certificates"]
+    ["Experiences", data.experiences, "/api/experiences", editExperience],
+    ["Projects", data.projects, "/api/projects", editProject],
+    ["Certificates", data.certificates, "/api/certificates", editCertificate]
   ], [data]);
+
+  async function move(endpoint, items, index, direction) {
+    const nextItems = [...items];
+    const swapIndex = index + direction;
+    if (swapIndex < 0 || swapIndex >= nextItems.length) return;
+    [nextItems[index], nextItems[swapIndex]] = [nextItems[swapIndex], nextItems[index]];
+    const next = await api(`${endpoint}/reorder`, {
+      method: "POST",
+      body: JSON.stringify({ ids: nextItems.map((item) => item.id) })
+    });
+    setData(next, "Order updated");
+  }
 
   return (
     <section className="panel wide">
       <h2>Published Items</h2>
       <div className="manage-list">
-        {groups.map(([label, items, endpoint]) => (
+        {groups.map(([label, items, endpoint, editItem]) => (
           <div key={label}>
             <h3>{label}</h3>
-            {items.map((item) => (
+            {items.map((item, index) => (
               <div className="manage-row" key={item.id}>
                 <span>{item.title || item.name}</span>
+                <div className="manage-actions">
+                  <button type="button" title="Move up" onClick={() => move(endpoint, items, index, -1)}>
+                    <ArrowUp size={16} />
+                  </button>
+                  <button type="button" title="Move down" onClick={() => move(endpoint, items, index, 1)}>
+                    <ArrowDown size={16} />
+                  </button>
+                  <button type="button" title="Edit" onClick={() => editItem(item)}>
+                    <Pencil size={16} />
+                  </button>
+                  {label === "Projects" && (
+                    <label className="icon-upload" title="Upload screenshot">
+                      <ImageIcon size={16} />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (event) => {
+                          const file = event.target.files[0];
+                          if (!file) return;
+                          const body = new FormData();
+                          body.append("image", file);
+                          const next = await api(`/api/projects/${item.id}/image`, { method: "POST", body });
+                          setData(next, "Project screenshot uploaded");
+                          event.target.value = "";
+                        }}
+                      />
+                    </label>
+                  )}
                 <button
                   type="button"
                   title="Delete"
@@ -523,9 +609,41 @@ function ContentList({ data, setData }) {
                 >
                   <Trash2 size={16} />
                 </button>
+                </div>
               </div>
             ))}
           </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ContactMessages({ messages, setMessages }) {
+  return (
+    <section className="panel wide">
+      <h2>Contact Messages</h2>
+      <div className="message-list">
+        {messages.length === 0 && <p className="muted">No messages yet.</p>}
+        {messages.map((message) => (
+          <article className="message-row" key={message.id}>
+            <div>
+              <strong>{message.name}</strong>
+              <a href={`mailto:${message.email}`}>{message.email}</a>
+              <small>{new Date(message.created_at).toLocaleString()}</small>
+              <p>{message.message}</p>
+            </div>
+            <button
+              type="button"
+              title="Delete message"
+              onClick={async () => {
+                const next = await api(`/api/contact/${message.id}`, { method: "DELETE" });
+                setMessages(next.messages || []);
+              }}
+            >
+              <Trash2 size={16} />
+            </button>
+          </article>
         ))}
       </div>
     </section>

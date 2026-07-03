@@ -7,6 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
 import sqliteStoreFactory from "better-sqlite3-session-store";
+import bcrypt from "bcryptjs";
 import cors from "cors";
 import express from "express";
 import session from "express-session";
@@ -59,6 +60,7 @@ const defaultData = {
         "A short description of a project you are proud of, including the problem it solves.",
       stack: ["React", "Node.js"],
       link: "https://example.com",
+      imageUrl: "",
       completed: true
     }
   ],
@@ -112,6 +114,7 @@ function migrate() {
       description TEXT,
       stack TEXT NOT NULL DEFAULT '[]',
       link TEXT,
+      image_url TEXT,
       completed INTEGER NOT NULL DEFAULT 0,
       sort_order INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -126,13 +129,21 @@ function migrate() {
       sort_order INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS contact_messages (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      message TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 }
 
 function ensureColumn(table, column, definition) {
   const columns = db.prepare(`PRAGMA table_info(${table})`).all();
   if (!columns.some((item) => item.name === column)) {
-    db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`).run();
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
   }
 }
 
@@ -208,6 +219,7 @@ function getPortfolio() {
       description: row.description,
       stack: parseJsonList(row.stack),
       link: row.link,
+      imageUrl: row.image_url,
       completed: Boolean(row.completed)
     }));
   const certificates = db
@@ -315,13 +327,14 @@ function upsertExperience(item, sortOrder = 0) {
 
 function upsertProject(item, sortOrder = 0) {
   db.prepare(`
-    INSERT INTO projects (id, name, description, stack, link, completed, sort_order)
-    VALUES (@id, @name, @description, @stack, @link, @completed, @sortOrder)
+    INSERT INTO projects (id, name, description, stack, link, image_url, completed, sort_order)
+    VALUES (@id, @name, @description, @stack, @link, @imageUrl, @completed, @sortOrder)
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       description = excluded.description,
       stack = excluded.stack,
       link = excluded.link,
+      image_url = COALESCE(excluded.image_url, projects.image_url),
       completed = excluded.completed,
       sort_order = excluded.sort_order
   `).run({
@@ -330,9 +343,28 @@ function upsertProject(item, sortOrder = 0) {
     description: cleanText(item.description),
     stack: JSON.stringify(normalizeList(item.stack)),
     link: cleanText(item.link),
+    imageUrl: item.imageUrl ?? item.image_url ?? null,
     completed: item.completed === true || item.completed === "true" || item.completed === "on" ? 1 : 0,
     sortOrder
   });
+}
+
+function updateProjectImage(id, url) {
+  db.prepare("UPDATE projects SET image_url = ? WHERE id = ?").run(url, id);
+}
+
+function reorderItems(table, ids) {
+  const allowed = new Set(["experiences", "projects", "certificates"]);
+  if (!allowed.has(table)) throw new Error("Invalid reorder target.");
+  const update = db.prepare(`UPDATE ${table} SET sort_order = ? WHERE id = ?`);
+  const transaction = db.transaction(() => {
+    ids.forEach((id, index) => update.run(index, id));
+  });
+  transaction();
+}
+
+function getContactMessages() {
+  return db.prepare("SELECT * FROM contact_messages ORDER BY created_at DESC").all();
 }
 
 function insertCertificate(item, sortOrder = 0) {
@@ -351,6 +383,7 @@ function insertCertificate(item, sortOrder = 0) {
 
 migrate();
 ensureColumn("projects", "completed", "INTEGER NOT NULL DEFAULT 0");
+ensureColumn("projects", "image_url", "TEXT");
 seedIfEmpty();
 
 function requireAuth(req, res, next) {
@@ -438,13 +471,18 @@ app.get("/api/session", (req, res) => {
   res.json({ authenticated: Boolean(req.session?.isAdmin) });
 });
 
-app.post("/api/login", (req, res) => {
+app.post("/api/login", async (req, res) => {
   const adminUser = process.env.ADMIN_USER || "admin";
   const adminPassword = process.env.ADMIN_PASSWORD || "admin123";
+  const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH || "";
   const username = cleanText(req.body?.username);
   const password = String(req.body?.password || "");
 
-  if (username === adminUser && password === adminPassword) {
+  const passwordMatches = adminPasswordHash
+    ? await bcrypt.compare(password, adminPasswordHash)
+    : password === adminPassword;
+
+  if (username === adminUser && passwordMatches) {
     req.session.isAdmin = true;
     return res.json({ authenticated: true });
   }
@@ -485,6 +523,15 @@ app.post("/api/experiences", requireAuth, (req, res, next) => {
   }
 });
 
+app.post("/api/experiences/reorder", requireAuth, (req, res, next) => {
+  try {
+    reorderItems("experiences", Array.isArray(req.body.ids) ? req.body.ids : []);
+    res.json(getPortfolio());
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.delete("/api/experiences/:id", requireAuth, (req, res, next) => {
   try {
     db.prepare("DELETE FROM experiences WHERE id = ?").run(req.params.id);
@@ -503,6 +550,25 @@ app.post("/api/projects", requireAuth, (req, res, next) => {
   }
 });
 
+app.post("/api/projects/reorder", requireAuth, (req, res, next) => {
+  try {
+    reorderItems("projects", Array.isArray(req.body.ids) ? req.body.ids : []);
+    res.json(getPortfolio());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/projects/:id/image", requireAuth, upload.single("image"), (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: "No image uploaded." });
+    updateProjectImage(req.params.id, `/uploads/${req.file.filename}`);
+    res.json(getPortfolio());
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.delete("/api/projects/:id", requireAuth, (req, res, next) => {
   try {
     db.prepare("DELETE FROM projects WHERE id = ?").run(req.params.id);
@@ -515,6 +581,7 @@ app.delete("/api/projects/:id", requireAuth, (req, res, next) => {
 app.post("/api/certificates", requireAuth, upload.single("file"), (req, res, next) => {
   try {
     insertCertificate({
+      id: req.body.id,
       name: req.body.name,
       issuer: req.body.issuer,
       date: req.body.date,
@@ -526,10 +593,56 @@ app.post("/api/certificates", requireAuth, upload.single("file"), (req, res, nex
   }
 });
 
+app.post("/api/certificates/reorder", requireAuth, (req, res, next) => {
+  try {
+    reorderItems("certificates", Array.isArray(req.body.ids) ? req.body.ids : []);
+    res.json(getPortfolio());
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.delete("/api/certificates/:id", requireAuth, (req, res, next) => {
   try {
     db.prepare("DELETE FROM certificates WHERE id = ?").run(req.params.id);
     res.json(getPortfolio());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/contact", (req, res, next) => {
+  try {
+    const name = cleanText(req.body.name);
+    const email = cleanText(req.body.email);
+    const message = cleanText(req.body.message);
+
+    if (!name || !email || !message) {
+      return res.status(400).json({ message: "Name, email, and message are required." });
+    }
+
+    db.prepare(`
+      INSERT INTO contact_messages (id, name, email, message)
+      VALUES (?, ?, ?, ?)
+    `).run(crypto.randomUUID(), name, email, message);
+    res.status(201).json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/contact", requireAuth, (_req, res, next) => {
+  try {
+    res.json({ messages: getContactMessages() });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/contact/:id", requireAuth, (req, res, next) => {
+  try {
+    db.prepare("DELETE FROM contact_messages WHERE id = ?").run(req.params.id);
+    res.json({ messages: getContactMessages() });
   } catch (error) {
     next(error);
   }
