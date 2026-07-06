@@ -552,8 +552,9 @@ p {
 
 .project-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 18px;
+  align-items: stretch;
 }
 
 .project-card,
@@ -564,13 +565,17 @@ p {
 }
 
 .project-card {
-  padding: 22px;
+  padding: 24px;
   position: relative;
   overflow: hidden;
-  min-height: 260px;
+  min-height: 360px;
   display: flex;
   flex-direction: column;
   transition: transform 0.28s ease, border-color 0.28s ease, box-shadow 0.28s ease;
+}
+
+.empty-card {
+  min-height: 260px;
 }
 
 .project-shot {
@@ -613,7 +618,8 @@ p {
   justify-content: space-between;
   align-items: center;
   color: var(--accent-hot);
-  margin-bottom: 28px;
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
 .status-pill {

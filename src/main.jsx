@@ -138,6 +138,7 @@ function Portfolio({ data }) {
   const { profile, experiences, projects, certificates, skills } = data;
   const marqueeItems = [...skills.slice(0, 12), profile.role, "Portfolio", "Projects"];
   const cleanAbout = cleanBio(profile.about);
+  const projectList = projects.length ? projects : [];
   const [previewProject, setPreviewProject] = useState(null);
   const [contact, setContact] = useState({ name: "", email: "", message: "" });
   const [contactStatus, setContactStatus] = useState("");
@@ -220,34 +221,51 @@ function Portfolio({ data }) {
           <p className="eyebrow">Selected Work</p>
           <h2 className="section-title">Selected projects with working links and real decisions behind them.</h2>
           <div className="project-grid">
-            {projects.map((project) => (
-              <article className="project-card" key={project.id} data-reveal>
-                {project.imageUrl && <img className="project-shot" src={project.imageUrl} alt={`${project.name} screenshot`} />}
+            {projectList.length === 0 && (
+              <article className="project-card empty-card" data-reveal>
                 <div className="card-top">
                   <BriefcaseBusiness />
-                  <span className={project.completed ? "status-pill complete" : "status-pill progress"}>
-                    {project.completed ? "Complete" : "In progress"}
-                  </span>
+                  <span className="status-pill progress">Next up</span>
                 </div>
-                <h3>{project.name}</h3>
-                <p>{project.description}</p>
-                <div className="mini-tags">
-                  {project.stack.map((tech) => <span key={tech}>{tech}</span>)}
-                </div>
-                {project.link && (
-                  <div className="project-actions">
-                    <button type="button" onClick={() => setPreviewProject(project)}>
-                      <Globe2 size={16} />
-                      Preview
-                    </button>
-                    <a href={project.link} target="_blank" rel="noreferrer">
-                      <ExternalLink size={16} />
-                      Visit
-                    </a>
-                  </div>
-                )}
+                <h3>Project case studies coming soon</h3>
+                <p>Published projects from the admin dashboard will appear here with links, screenshots, and stack details.</p>
               </article>
-            ))}
+            )}
+            {projectList.map((project) => {
+              const projectUrl = project.link || firstUrl(project.description);
+              const summary = projectSummary(project.description);
+
+              return (
+                <article className="project-card" key={project.id} data-reveal>
+                  {project.imageUrl && <img className="project-shot" src={project.imageUrl} alt={`${project.name} screenshot`} />}
+                  <div className="card-top">
+                    <BriefcaseBusiness />
+                    <span className={project.completed ? "status-pill complete" : "status-pill progress"}>
+                      {project.completed ? "Complete" : "In progress"}
+                    </span>
+                  </div>
+                  <h3>{project.name}</h3>
+                  <p>{summary}</p>
+                  {project.stack.length > 0 && (
+                    <div className="mini-tags">
+                      {project.stack.map((tech) => <span key={tech}>{tech}</span>)}
+                    </div>
+                  )}
+                  {projectUrl && (
+                    <div className="project-actions">
+                      <button type="button" onClick={() => setPreviewProject({ ...project, link: projectUrl })}>
+                        <Globe2 size={16} />
+                        Preview
+                      </button>
+                      <a href={projectUrl} target="_blank" rel="noreferrer">
+                        <ExternalLink size={16} />
+                        Visit
+                      </a>
+                    </div>
+                  )}
+                </article>
+              );
+            })}
           </div>
         </section>
 
@@ -691,6 +709,15 @@ function cleanBio(value) {
     .replace(/\s+/g, " ")
     .trim();
   return cleaned || "Profile summary coming soon. The code is ready; the bio is warming up.";
+}
+
+function firstUrl(value) {
+  return String(value || "").match(/https?:\/\/\S+/)?.[0] || "";
+}
+
+function projectSummary(value) {
+  const cleaned = String(value || "").replace(/https?:\/\/\S+/g, "").replace(/\s+/g, " ").trim();
+  return cleaned || "A focused build with more implementation details being added soon.";
 }
 
 createRoot(document.getElementById("root")).render(<App />);

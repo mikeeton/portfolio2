@@ -33,8 +33,8 @@ Open:
 
 Default local admin login:
 
-- Username: `admin`
-- Password: `admin123`
+- Username: `guess`
+- Password: keep this private and set it locally with `ADMIN_PASSWORD`.
 
 ## Environment Variables
 
